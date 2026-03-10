@@ -1,92 +1,282 @@
-import { GoogleGenAI } from "@google/genai";
+import { useState, useRef } from 'react';
+import { generateScript } from './services/gemini';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Loader2, Wand2, Copy, Check, Clapperboard, Sparkles, Video as VideoIcon, Image as ImageIcon, X } from 'lucide-react';
+import { motion } from 'motion/react';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const SYSTEM_INSTRUCTION = `[VAI TRÒ & BỐI CẢNH]
-Bạn là Đạo diễn, Biên kịch & Video Editor "mỏ hỗn" chuyên làm nội dung ngắn TikTok triệu view. Bối cảnh chính là môi trường công sở, văn phòng cực kỳ lầy lội và hài hước, nhưng CÔNG TY NÀY CHUYÊN BÁN CHẬU CÂY, PHÂN BÓN VÀ DỤNG CỤ TRỒNG CÂY.
-
-[CONCEPT KÊNH & TUYẾN NHÂN VẬT BẮT BUỘC]
-1. Concept cốt lõi: LUÔN LUÔN xoay quanh sự xuất hiện của SẾP và những màn TRANH LUẬN NẢY LỬA, "bật" nhau chan chát với nhân viên (Content, Video Editor, Thiết kế, Nhân viên Sale đại lý).
-2. Tính thực tế & Sản phẩm: Tình huống mâu thuẫn phải THỰC SỰ HỢP LÝ, GẦN GŨI với dân văn phòng (sếp dí deadline vô lý, khách đổi brief phút 89, ép KPI doanh số trên trời, tị nạnh nhau...). BẮT BUỘC phải lồng ghép khéo léo các sản phẩm như CHẬU CÂY, PHÂN BÓN, DỤNG CỤ TRỒNG CÂY vào tình huống văn phòng một cách tự nhiên và hài hước nhất.
-3. Xử lý Video Đính Kèm (QUAN TRỌNG NHẤT): Nếu người dùng cung cấp [VIDEO THAM KHẢO ĐÍNH KÈM], bạn PHẢI phân tích nội dung/trend/câu thoại của video đó, sau đó CHUYỂN THỂ và "xào" lại cho khớp với concept "Sếp vs Nhân viên văn phòng bán chậu cây" một cách hài hước nhất, chắt lọc những gì tinh túy nhất. Ưu tiên tuyệt đối sự hài hước, xen kẽ các kịch bản tấu hài mặn mòi. Toàn bộ kịch bản phải THUẦN NGÔN NGỮ TIẾNG VIỆT CHUYỂN THỂ VÀ THỰC SỰ ĐỜI THƯỜNG NHẤT.
-
-[MỤC TIÊU]
-Phân tích [INPUT Ý TƯỞNG], [THÔNG TIN SẢN PHẨM], [HÌNH ẢNH SẢN PHẨM] (nếu có) và [VIDEO THAM KHẢO ĐÍNH KÈM] (nếu có) để xuất ra Kịch bản Đối thoại định dạng BẢNG. Tổng thời lượng: dưới 1 phút. Số lượng cảnh: 4-5 cảnh ngắn.
-Luôn sử dụng công cụ tìm kiếm (Google Search) để cập nhật và lồng ghép các trend TikTok mới nhất, sự kiện nóng hổi, ngôn ngữ mạng xã hội của Gen Z vào kịch bản để dễ viral nhất.
-
-[NGUYÊN TẮC VIẾT THOẠI - NGẮN GỌN, ĐỜI THƯỜNG & HÀI HƯỚC]
-1. Thoại cực kỳ NGẮN GỌN, nhịp độ nhanh (fast-paced). Thuần văn nói 100% tiếng Việt đời thường. ĐẶC BIỆT LƯU Ý: Nhân viên BẮT BUỘC phải luôn xưng hô với sếp là "Sếp" (ví dụ: "Dạ sếp", "Sếp ơi", "Trời ơi sếp..."), giữ đúng vai vế dù có "mỏ hỗn" hay cãi lại.
-2. Bắt buộc dùng từ lóng, từ đệm trend: "Ê", "Ủa alo", "Bà nội", "Cha nội", "Cảm lạnh", "Sốc ngang", "Xịt keo", "Cười ẻ", "Bất ổn", "Ngoan xinh yêu", "Vô tri", "Flex", "Deadline", "KPI", "Brief".
-3. Tương tác "Quăng miếng - Đỡ miếng": Tranh luận nảy lửa, Sếp ép uổng vô lý, Nhân viên "bật" lại cực gắt, cà khịa thẳng mặt.
-4. TƯƠNG TÁC VẬT LÝ & ĐẠO CỤ (ƯU TIÊN SẢN PHẨM): BẮT BUỘC phải có tương tác vật lý giữa con người và đạo cụ, ƯU TIÊN SỬ DỤNG CHẬU CÂY, BAO PHÂN BÓN, XẺNG TRỒNG CÂY xen kẽ với đạo cụ văn phòng (laptop, xấp tài liệu). Nhân vật phải cầm, nắm, quăng, vò đầu bứt tai, đập bàn... để tăng tính kịch tính. Ví dụ: Sếp lấy chậu cây gõ đầu Content vì viết dở, Sale ôm bao phân bón khóc lóc vì chưa đạt KPI, Designer lấy xẻng xúc đất dọa đập máy tính vì khách đổi brief. Tuyệt đối KHÔNG đứng im như khúc gỗ đọc thoại.
-
-[GIỚI HẠN QUAY DỰNG - SIÊU ĐƠN GIẢN]
-1. Setup: Siêu đơn giản, ai cũng tự quay bằng điện thoại được. 1 góc máy cố định (đặt điện thoại lên bàn), hoặc góc POV (người cầm máy nói chuyện với người đối diện).
-2. Dựng: Cắt gọt cực nhanh (jump-cut liên tục để tạo nhịp điệu), chèn text to chà bá, thêm âm thanh (SFX) tát, quạ kêu, nhạc meme giật gân.
-
-[CẤU TRÚC ĐẦU RA BẮT BUỘC]
-NẾU CÓ VIDEO THAM KHẢO ĐÍNH KÈM, bạn PHẢI xuất ra 2 phần rõ ràng:
-
---- PHẦN 1: PHÂN TÍCH CHUYÊN SÂU VIDEO GỐC ---
-**1. Bối cảnh & Nội dung chính:** (Tóm tắt ngắn gọn video gốc nói về cái gì)
-**2. Phân tích Voice/Tone thoại & Yếu tố Viral:** (Phân tích CHUYÊN SÂU về ngữ điệu, thái độ, cách nhấn nhá, nhịp điệu giọng nói của nhân vật trong video gốc. Chỉ ra điểm ăn tiền, miếng hài hoặc câu thoại trend)
-**3. KỊCH BẢN VIDEO GỐC (BÓC BĂNG CHÍNH XÁC):**
-Sử dụng Markdown Table để bóc băng lại CHÍNH XÁC 100% video gốc. BẮT BUỘC PHẢI NGHE VÀ CHÉP LẠI ĐÚNG TỪNG CÂU THOẠI GỐC TRONG VIDEO. Các cột: Cảnh | Nhân vật | Góc máy & Hành động | Thoại gốc chính xác trong video | Phân tích Ngữ điệu (Voice/Tone)
-
---- PHẦN 2: KỊCH BẢN ĐỀ XUẤT (CHUYỂN THỂ SIÊU HÀI HƯỚC) ---
-### 🎬 TIÊU ĐỀ VIDEO: [1 tiêu đề cực giật tít, hài hước, mang tính cà khịa, dùng làm caption TikTok]
-
-**1. TÓM TẮT SẢN XUẤT**
-- **Góc máy:** (Mô tả cách đặt điện thoại đơn giản nhất)
-- **Nhân vật:** (Sếp, Content/Sale/Editor...)
-- **Đạo cụ:** (Chậu cây, phân bón, dụng cụ trồng cây, laptop...)
-
-**2. KỊCH BẢN ĐỐI THOẠI & QUAY DỰNG (SHOOTING BOARD)**
-Sử dụng Markdown Table với các cột: Cảnh | Nhân vật | Góc máy & Hành động | Thoại (Ngắn gọn, mỏ hỗn, trend) | Ghi chú Dựng
-
-(NẾU KHÔNG CÓ VIDEO THAM KHẢO ĐÍNH KÈM, CHỈ CẦN XUẤT PHẦN 2: KỊCH BẢN ĐỀ XUẤT)`;
-
-export async function generateScript(
-  idea: string, 
-  productInfo: string, 
-  productImage: { data: string, mimeType: string } | null, 
-  referenceVideo: { data: string, mimeType: string } | null
-) {
-  const promptText = `[THÔNG TIN SẢN PHẨM/ĐẠO CỤ]:\n${productInfo || "Không có"}\n\n[INPUT Ý TƯỞNG CỦA NGƯỜI DÙNG]:\n${idea || "Tự nghĩ ra một tình huống drama văn phòng hài hước (Sếp vs Content/Editor/Sale/Thiết kế) có lồng ghép chậu cây, phân bón hoặc dụng cụ trồng cây"}\n\n(Lưu ý: Nếu có Video đính kèm, hãy ưu tiên phân tích và chuyển thể nội dung video đó thành drama văn phòng bán chậu cây bằng ngôn ngữ tiếng Việt đời thường nhất. Hãy tự động tìm kiếm trend TikTok hot nhất hôm nay và áp dụng vào kịch bản)`;
-
-  const parts: any[] = [];
+export default function App() {
+  const [idea, setIdea] = useState('');
+  const [productInfo, setProductInfo] = useState('');
+  const [productImage, setProductImage] = useState<{data: string, mimeType: string} | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [referenceVideo, setReferenceVideo] = useState<{data: string, mimeType: string} | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [script, setScript] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   
-  if (productImage) {
-    parts.push({
-      inlineData: {
-        data: productImage.data,
-        mimeType: productImage.mimeType
-      }
-    });
-  }
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
-  if (referenceVideo) {
-    parts.push({
-      inlineData: {
-        data: referenceVideo.data,
-        mimeType: referenceVideo.mimeType
-      }
-    });
-  }
-  
-  parts.push({ text: promptText });
-
-  const config: any = {
-    systemInstruction: SYSTEM_INSTRUCTION,
-    temperature: 0.8,
-    tools: [{ googleSearch: {} }] // Enable Google Search to fetch latest trends
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        setProductImage({ data: base64String, mimeType: file.type });
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
-    contents: { parts },
-    config: config
-  });
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 20 * 1024 * 1024) {
+        alert('Vui lòng chọn video dưới 20MB để đảm bảo tốc độ xử lý.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        setReferenceVideo({ data: base64String, mimeType: file.type });
+        setVideoPreview(URL.createObjectURL(file));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  return response.text;
+  const removeImage = () => {
+    setProductImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeVideo = () => {
+    setReferenceVideo(null);
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+    }
+    setVideoPreview(null);
+    if (videoInputRef.current) {
+      videoInputRef.current.value = '';
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!idea.trim() && !referenceVideo && !productInfo.trim()) return;
+    setIsLoading(true);
+    try {
+      const result = await generateScript(idea, productInfo, productImage, referenceVideo);
+      setScript(result || '');
+    } catch (error) {
+      console.error(error);
+      alert('Có lỗi xảy ra khi tạo kịch bản. Vui lòng thử lại!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(script);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-50 p-4 md:p-8 font-sans selection:bg-cyan-500/30">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="text-center space-y-4 py-8">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="inline-flex items-center justify-center p-3 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-2xl mb-4"
+          >
+            <Clapperboard className="w-8 h-8 text-cyan-400" />
+          </motion.div>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            TikTok Script <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">Generator</span>
+          </h1>
+          <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
+            Công cụ tạo kịch bản video ngắn tự động. Chuyên trị các content "mỏ hỗn", cà khịa, bắt trend và chốt sale mượt mà.
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Input Section */}
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="lg:col-span-4 space-y-6"
+          >
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-6 backdrop-blur-sm sticky top-8">
+              
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 text-sm font-medium text-zinc-300">
+                  <VideoIcon className="w-4 h-4 text-emerald-400" />
+                  <span>Video tham khảo (Tùy chọn)</span>
+                </label>
+                
+                {/* Video Upload */}
+                <div className="mt-2">
+                  {!videoPreview ? (
+                    <div 
+                      onClick={() => videoInputRef.current?.click()}
+                      className="w-full h-24 border-2 border-dashed border-zinc-800 hover:border-emerald-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950"
+                    >
+                      <VideoIcon className="w-6 h-6 text-zinc-500 mb-2" />
+                      <span className="text-xs text-zinc-500">Tải video lên (Tối đa 20MB)</span>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-40 rounded-xl border border-zinc-800 overflow-hidden bg-zinc-950">
+                      <video src={videoPreview} controls className="w-full h-full object-contain" />
+                      <button 
+                        onClick={removeVideo}
+                        className="absolute top-2 right-2 p-1 bg-zinc-900/80 hover:bg-red-500/80 text-white rounded-full backdrop-blur-sm transition-colors z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    ref={videoInputRef} 
+                    onChange={handleVideoUpload} 
+                    accept="video/*" 
+                    className="hidden" 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 text-sm font-medium text-zinc-300">
+                  <Sparkles className="w-4 h-4 text-pink-400" />
+                  <span>Ý tưởng của bạn</span>
+                </label>
+                <textarea
+                  value={idea}
+                  onChange={(e) => setIdea(e.target.value)}
+                  placeholder="VD: Sếp ép KPI đại lý, Sale khóc lóc ăn vạ, Content đứng quay video cười cợt..."
+                  className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all resize-none placeholder:text-zinc-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 text-sm font-medium text-zinc-300">
+                  <ImageIcon className="w-4 h-4 text-cyan-400" />
+                  <span>Sản phẩm / Đạo cụ (Tùy chọn)</span>
+                </label>
+                
+                {/* Image Upload */}
+                <div className="mt-2">
+                  {!imagePreview ? (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-24 border-2 border-dashed border-zinc-800 hover:border-cyan-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950"
+                    >
+                      <ImageIcon className="w-6 h-6 text-zinc-500 mb-2" />
+                      <span className="text-xs text-zinc-500">Tải ảnh sản phẩm/đạo cụ lên (Tùy chọn)</span>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-32 rounded-xl border border-zinc-800 overflow-hidden bg-zinc-950">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
+                      <button 
+                        onClick={removeImage}
+                        className="absolute top-2 right-2 p-1 bg-zinc-900/80 hover:bg-red-500/80 text-white rounded-full backdrop-blur-sm transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleImageUpload} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+                </div>
+
+                <textarea
+                  value={productInfo}
+                  onChange={(e) => setProductInfo(e.target.value)}
+                  placeholder="Nhập thông tin sản phẩm/đạo cụ (VD: Laptop công ty, xấp tài liệu, hoặc chậu cây...)"
+                  className="w-full h-24 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all resize-none placeholder:text-zinc-600 mt-3"
+                />
+              </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading || (!idea.trim() && !referenceVideo && !productInfo.trim())}
+                className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/20"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Đang rặn kịch bản...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    <span>Tạo Kịch Bản Ngay</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Output Section */}
+          <motion.div 
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="lg:col-span-8"
+          >
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 min-h-[600px] backdrop-blur-sm flex flex-col">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-800">
+                <h2 className="text-lg font-semibold text-zinc-100 flex items-center">
+                  <Clapperboard className="w-5 h-5 mr-2 text-cyan-400" />
+                  Kịch Bản Đầu Ra
+                </h2>
+                {script && (
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center space-x-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-1.5 px-3 rounded-lg transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{copied ? 'Đã copy' : 'Copy'}</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-auto">
+                {isLoading ? (
+                  <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4 py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+                    <p className="animate-pulse">Đang phân tích ý tưởng và viết thoại mỏ hỗn...</p>
+                  </div>
+                ) : script ? (
+                  <div className="markdown-body text-zinc-300">
+                    <Markdown remarkPlugins={[remarkGfm]}>{script}</Markdown>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-4 py-20">
+                    <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center">
+                      <Wand2 className="w-8 h-8 text-zinc-700" />
+                    </div>
+                    <p>Nhập ý tưởng hoặc tải video tham khảo bên trái và bấm tạo để xem kết quả</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
 }
